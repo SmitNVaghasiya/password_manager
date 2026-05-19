@@ -107,8 +107,7 @@ class BackupService {
 
   Future<int> importBackup() async {
     final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['enc'],
+      type: FileType.any,
     );
     if (result == null || result.files.single.path == null) return 0;
 

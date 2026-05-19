@@ -141,7 +141,7 @@ File: `password_manager_mockup.html`
 | Database | `sqflite` | Simpler than drift, enough for this scope |
 | Secure key storage | `flutter_secure_storage` | Wraps Android Keystore |
 | Encryption | `cryptography` (AES-GCM-256) | Authenticated encryption, prevents tampering |
-| KDF | PBKDF2-HMAC-SHA256, 150k iterations | Slow on purpose — brute-force defense |
+| KDF | **Argon2 + bcrypt (layered)** — replaces PBKDF2 | Memory-hard. 4-digit PIN as KDF input with PBKDF2 was GPU-crackable in seconds. Argon2 forces RAM per attempt; bcrypt adds configurable work factor. Together they make short PINs viable for a portable DB. |
 | Biometrics | `local_auth` | Standard Flutter package |
 | File picking | `file_picker` | Standard |
 | CSV parsing | `csv` | Standard |
@@ -208,21 +208,33 @@ Read this section twice before writing any crypto code. This is the part that, i
 
 ### First launch setup
 
-1. User enters master password (min 8 chars, confirmed twice)
+1. User chooses unlock method: **PIN** or **Password**
+   - PIN: user sets 4–8 digit PIN. Length stored in `app_meta` as `pin_length`.
+   - Password: user enters master password (min 8 chars, confirmed twice).
 2. Generate random 32-byte salt → store in `app_meta`
-3. Derive 32-byte key: `PBKDF2-HMAC-SHA256(password, salt, 150000 iterations)`
+3. Derive 32-byte key: **Argon2(input, salt) → bcrypt(result)** — replaces PBKDF2
 4. Encrypt fixed known string `"VAULT_OK_v1"` with that key → store ciphertext + nonce + MAC in `app_meta` as the verifier
-5. Store derived key in `flutter_secure_storage` gated by biometric (for fingerprint unlock path)
-6. Prompt user to write a **recovery hint** — a clue only they understand. Store plain. Never store the actual password.
+5. Store `unlock_type` (`pin` or `password`) in `app_meta`
+6. Store derived key in `flutter_secure_storage` gated by biometric (for fingerprint unlock path)
+7. Prompt user to write a **recovery hint** — a clue only they understand. Store plain. Never store the actual password.
 
 ### Unlock flow
 
-1. Read salt + verifier from `app_meta`
-2. Derive key from entered password + salt
-3. Try to decrypt verifier
-4. If success → key is correct, hold in memory (`VaultSession`), route to vault
-5. If failure → "Wrong master password" error. Return null, not throw.
-6. For biometric unlock: read pre-stored key from `flutter_secure_storage` (gated by `local_auth`), skip steps 2–3
+1. Read salt + verifier + `unlock_type` from `app_meta`
+2. Show PIN numpad (if `unlock_type = pin`) or password text field (if `unlock_type = password`)
+3. PIN numpad: auto-submit when digit count reaches `pin_length` — no OK button
+4. Derive key from entered input + salt using Argon2+bcrypt
+5. Try to decrypt verifier
+6. If success → key correct, hold in memory (`VaultSession`), route to vault
+7. If failure → "Wrong PIN" / "Wrong password" error. Return null, not throw.
+8. For biometric unlock: read pre-stored key from `flutter_secure_storage` (gated by `local_auth`), skip steps 4–5
+
+### Splash screen routing gate
+
+- Boot → check `kdf_salt` in `app_meta`
+- If missing → Setup screen (first launch)
+- If present → Lock screen (returning user)
+- Display: emerald logo + "PassMgr" + animated loading dots while checking
 
 ### Per-entry encryption
 

@@ -60,6 +60,9 @@
 | 2026-05-19 | **URL field added to entry form** | Chrome CSV exports `url` column. Parsing it and storing it makes import useful. Missing from original mockup — added in full mockup |
 | 2026-05-19 | **Recovery hint row added to Settings** | Was in data model but missing from settings screen. User must be able to update their hint |
 | 2026-05-19 | **"Add all remaining" bulk option for Chrome import** | Per-entry review is correct default for first import. Bulk shortcut saves time when user trusts the batch |
+| 2026-05-19 | **Chrome import redesigned: checkbox list replaces one-by-one flow** | 85 entries one at a time = 85 taps. Scrollable list with checkboxes lets user scan all, deselect junk (localhost etc.), import selected in one tap. "Show all / Hide all" passwords toggle added for quick review. Skip button removed — unchecking a row is the equivalent |
+| 2026-05-19 | **`FileType.any` for `.enc` backup import** | Android `file_picker` rejects custom extensions it cannot map to a MIME type. `.enc` is not a registered MIME type. Using `FileType.any` lets user pick the file without filtering |
+| 2026-05-19 | **Versioning policy: patch/minor/major** | Patch = bug fix / UI tweak. Minor = new feature or screen. Major = breaking change (encryption algorithm, data model migration). Both `pubspec.yaml` and `settings_screen.dart` must be updated together |
 
 ---
 
@@ -70,6 +73,21 @@
 | 2026-05-19 | **Clipboard auto-clear fails if app killed before 20s** | OS limitation. Document in UI: "Clears in 20s if app stays open." |
 | 2026-05-19 | **History items have no copy button** | Original mockup only has reveal toggle. Full mockup corrects this. Add copy button to history rows in implementation |
 | 2026-05-19 | **Sort order not shown on vault home** | Low priority. Can add "Sort by: updated" indicator in v1.1 if needed |
+
+---
+
+## Unlock & KDF Decisions (2026-05-19, Session 3)
+
+| Date | Decision | Reason |
+|---|---|---|
+| 2026-05-19 | **[SUPERSEDES PBKDF2] KDF changed to Argon2 + bcrypt layered** | 4-digit PIN as KDF input with PBKDF2 is brute-forceable in seconds on GPU (only 10k combos). Argon2 is memory-hard — forces attacker to use lots of RAM per attempt, not just raw speed. bcrypt adds configurable work factor on top. Together they make 4-digit PIN meaningfully harder to crack even with exported DB. |
+| 2026-05-19 | **PIN unlock (4-digit) chosen as primary unlock method** | Simpler for dad — no keyboard popup, big tap targets, faster daily unlock. Android-style numpad UI (like Samsung lock screen). |
+| 2026-05-19 | **Auto-submit PIN when digit count matches — no OK button** | UX mirrors Samsung phone behavior. User sets PIN length at setup (4, 5, 6, etc.). App submits automatically when correct number of digits entered. |
+| 2026-05-19 | **PIN OR password — user chooses at first launch setup** | Some users prefer long passphrase over short PIN. Setup screen asks "Choose unlock: PIN or Password". Stored in `app_meta` as `unlock_type`. Cannot change without re-encrypting vault. |
+| 2026-05-19 | **PIN feeds KDF directly (not Android Keystore gate)** | User wants DB portability — export backup, restore on new phone. Keystore-gate approach breaks portability entirely (key is device-bound). Portability requires PIN → KDF path. Argon2+bcrypt mitigates the brute-force risk this introduces. |
+| 2026-05-19 | **PIN length user-configurable at setup (min 4 digits)** | 4 = minimum per owner decision. User may choose longer for stronger security. Length stored in `app_meta` as `pin_length`. Auto-submit fires at that length. |
+| 2026-05-19 | **Email-based master password reset — deferred to v2** | Requires internet, server, or email flow. Conflicts with local-only design. Will be added as separate feature after PIN/KDF migration ships. Export backup before reset is the safety net for v1. |
+| 2026-05-19 | **Splash screen added as Screen 1** | Boot → check `kdf_salt` in `app_meta` → if missing route to Setup, if present route to Lock. Logo + "PassMgr" + animated dots. Required routing gate. Was listed as item 10 in PROJECT.md "things forgotten" list. |
 
 ---
 

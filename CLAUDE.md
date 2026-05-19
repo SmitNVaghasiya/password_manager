@@ -70,6 +70,11 @@ If `PROJECT.md` and any other doc conflict, `PROJECT.md` wins for scope and `DES
 8. **Verify before completion** — run `flutter analyze`, test the relevant feature, before declaring done.
 9. Do not run `flutter` commands yourself — ask owner to run them and paste output.
 10. **Never skip encryption correctness** — if a crypto decision is ambiguous, stop and ask. Silent encryption bugs are worse than no app.
+11. **Version bumps are mandatory** on every meaningful change. Rules:
+    - **Patch** `1.0.x` → bug fixes, UI tweaks, copy changes, small improvements
+    - **Minor** `1.x.0` → new screen, new feature, new setting added
+    - **Major** `x.0.0` → encryption algorithm change, data model migration, breaking change
+    - Bump both `pubspec.yaml` (`version: x.y.z+buildNumber`) and the version string in `settings_screen.dart`. Build number increments by 1 each bump.
 
 ---
 
@@ -80,7 +85,7 @@ If `PROJECT.md` and any other doc conflict, `PROJECT.md` wins for scope and `DES
 | Database | `sqflite` | Simpler than drift, enough for this scope |
 | Secure key storage | `flutter_secure_storage` | Wraps Android Keystore |
 | Encryption | `cryptography` (AES-GCM-256) | Authenticated encryption, prevents tampering |
-| KDF | PBKDF2-HMAC-SHA256, 150k iterations | Slow on purpose — brute-force defense |
+| KDF | **Argon2 + bcrypt (layered)** — replaces PBKDF2 | Memory-hard KDF. Required for short PIN (4-digit) to resist GPU brute-force on portable DB export. |
 | Biometrics | `local_auth` | Standard Flutter package |
 | File picking | `file_picker` | Standard |
 | CSV parsing | `csv` | Standard |
@@ -132,12 +137,15 @@ CREATE TABLE app_meta (
 ## Encryption Rules (read before touching any crypto code)
 
 - Algorithm: AES-GCM-256
-- KDF: PBKDF2-HMAC-SHA256, 150,000 iterations, 32-byte random salt
+- KDF: **Argon2 + bcrypt (layered)** — memory-hard, replaces PBKDF2. Required for 4-digit PIN viability on portable DB.
+- Salt: 32-byte random, stored in `app_meta` as `kdf_salt`
 - Nonce: 12 bytes, fresh random per encryption. Never reuse.
-- Verifier: encrypt known string `"VAULT_OK_v1"` at setup to verify password without storing it
+- Verifier: encrypt known string `"VAULT_OK_v1"` at setup to verify PIN/password without storing it
+- Unlock method: stored in `app_meta` as `unlock_type` (`pin` or `password`). PIN length in `pin_length`.
+- PIN numpad: auto-submits at correct digit count. No OK button. Mirrors Samsung behavior.
 - Key held in memory in `VaultSession`. Dropped on lock. Never written to disk unprotected.
 - Biometric path: pre-derived key stored in `flutter_secure_storage` gated by `local_auth`
-- Master password change: re-encrypt ALL entries in single SQLite transaction. Never partial.
+- Master password/PIN change: re-encrypt ALL entries in single SQLite transaction. Never partial.
 
 ---
 

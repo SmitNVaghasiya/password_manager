@@ -4,6 +4,66 @@
 
 ---
 
+## 2026-05-19 — Duplicate Detection on Chrome Import
+
+**What was asked:** Detect duplicates when importing Chrome CSV — show "Already exists" badge, pre-uncheck duplicates, let user force-import if needed.
+
+**What was done:**
+- `chrome_import_screen.dart` — after CSV parse, load all vault entries and build `site_name|username` key set. Mark each CSV row as duplicate if key matches (case-insensitive). Duplicates: amber-tinted card, "Already exists" badge, pre-unchecked. Non-duplicates: pre-checked as before. Amber info banner at top: "X already in vault — unchecked. Y new." Done screen also shows duplicate count.
+- `pubspec.yaml` — version bumped `1.0.1+2` → `1.1.0+3` (new feature = minor bump)
+- `settings_screen.dart` — version display updated `v1.0.1` → `v1.1.0`
+
+**What's blocked:** Nothing.
+
+**Next session:** Test on device with a CSV that has known duplicates.
+
+---
+
+## 2026-05-19 — KDF Migration Plan, PIN Unlock, Splash Screen Design
+
+**What was asked:** Decide on PIN vs password unlock, auto-submit behavior, KDF strength for portable DB, splash screen routing gate, email reset feasibility.
+
+**What was decided:**
+- KDF changed from PBKDF2 to **Argon2 + bcrypt layered** — memory-hard, required for 4-digit PIN over portable DB to resist GPU brute-force
+- Primary unlock: **4-digit PIN** (configurable length, min 4) with Android numpad UI
+- **Auto-submit** fires when digit count matches `pin_length` — no OK button, mirrors Samsung
+- User chooses PIN or password at first launch setup. Stored in `app_meta` as `unlock_type`
+- DB stays portable (export/restore on new phone) — PIN feeds KDF directly, not Android Keystore gate
+- Splash screen added as Screen 1: logo + dots, checks `kdf_salt`, routes to Setup or Lock
+- Email-based password reset deferred to v2 (requires server, conflicts with local-only design)
+
+**What was changed in docs:**
+- `PROJECT_DECISIONS.md` — 8 new decision entries in new "Unlock & KDF Decisions" section
+- `PROJECT.md` — KDF row updated, Setup/Unlock/Splash sections rewritten
+- `CLAUDE.md` — KDF row + Encryption Rules section updated
+
+**What's blocked:** Code not yet changed. `encryption_service.dart` still uses PBKDF2. Argon2 package (`argon2_flutter` or equivalent) needs evaluation — check pub.dev compatibility with Android minSdk 23 before committing.
+
+**Next session starts at:** Evaluate Argon2 Flutter package. Swap KDF in `encryption_service.dart`. Build splash screen. Build PIN numpad lock screen. Migration path for existing installs (none yet — no real data exists).
+
+---
+
+## 2026-05-19 — Import Redesign, Bug Fixes, Versioning Policy
+
+**What was asked:** Redesign Chrome import to checkbox list. Fix `.enc` file picker crash. Add password visibility to import. Add "Show all / Hide all" toggle. Update README. Bump version. Add versioning rule to CLAUDE.md.
+
+**What was done:**
+- `chrome_import_screen.dart` — fully rewritten as scrollable checkbox list. All entries pre-selected. "Select all / Deselect all" + "Show all / Hide all" buttons in header bar. Per-row eye toggle. Sticky "Import X passwords" bottom button. Done screen with imported/skipped count.
+- `backup_service.dart` — changed `FileType.custom` with `allowedExtensions: ['enc']` → `FileType.any`. Fixes crash on Android (`.enc` has no registered MIME type).
+- `pubspec.yaml` — version bumped `1.0.0+1` → `1.0.1+2`
+- `settings_screen.dart` — version display updated `v1.0.0` → `v1.0.1`
+- `CLAUDE.md` — versioning policy added as Hard Rule 11 (patch/minor/major definitions)
+- `README.md` — fully rewritten with app description, screen list, security table, stack, setup instructions
+- `PROJECT_DECISIONS.md` — 3 new decision entries added
+- `test/widget_test.dart` — fixed stale `MyApp` reference
+- All `flutter analyze` warnings fixed: `withOpacity` → `withValues`, `activeColor` → `activeThumbColor`, unused imports removed, `BuildContext` async gap guarded
+
+**What's blocked:** Nothing. Hot restart required after these changes (not hot reload).
+
+**Next session starts at:** Test on physical device. Verify backup import works with `FileType.any`. Test biometric on dad's phone.
+
+---
+
 ## 2026-05-19 — Full App Code Generation
 
 **What was asked:** Build the complete Flutter app — all files, one by one, from scratch. Fresh `flutter create` scaffold existed; no dependencies or screens.
