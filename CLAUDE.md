@@ -6,6 +6,7 @@
 **Stack:** Flutter · SQLite (`sqflite`) · `cryptography` (AES-GCM-256) · `local_auth` · `flutter_secure_storage`
 **Platforms:** Android only (minSdkVersion 23). Not for Play Store. Personal use: Smit + dad.
 **Repo root:** `C:\Users\smitv\OneDrive\Desktop\Apps\Password_Manager`
+**Must Follow:** Never update the reamaining_tasks.md file as i write cahnges my self so that i can know where the task has reached ok.
 
 ---
 

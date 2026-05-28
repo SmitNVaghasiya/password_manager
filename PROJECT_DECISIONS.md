@@ -103,6 +103,19 @@
 
 ---
 
+## Bug Fix & Perf Decisions (2026-05-28, Session 5)
+
+| Date | Decision | Reason |
+|---|---|---|
+| 2026-05-28 | **Argon2id PIN params: 64MB/3iter → 16MB/2iter. Password params unchanged.** | 64MB Argon2id on a 4-digit PIN causes ~3s unlock wait with no meaningful security gain — device encryption + OS lockout is the real brute-force barrier for PINs, not KDF hardness. 16MB/2iter reduces wait to ~0.7s. Password vaults keep 64MB/3iter because password entropy is higher and worth the cost. New kdf_version: `argon2id_pin_v1` vs `argon2id_v1`. Existing PIN vaults need re-setup (clear data + redo first-launch). |
+| 2026-05-28 | **Argon2id deriveKey moved to background isolate via `compute()`** | Argon2id blocked the main thread during unlock — UI froze, no spinner rendered. `compute()` spawns a separate isolate; UI stays responsive during derivation. |
+| 2026-05-28 | **Lifecycle lock trigger: removed `AppLifecycleState.inactive`** | `inactive` fires on every keyboard popup, notification shade pull, and system overlay — causing constant false "vault locked" messages. Only `paused` (app backgrounded) should trigger lock. |
+| 2026-05-28 | **`VaultSession.suppressLock` flag for file picker** | System file picker causes `paused` lifecycle event even though user hasn't left the app. Without suppression, vault locked every time user picked a CSV file. Flag set true before `FilePicker.platform.pickFiles()`, reset immediately after. |
+| 2026-05-28 | **Vault list: `Scrollbar`, `BouncingScrollPhysics`, `cacheExtent: 500`** | No scrollbar = user couldn't see scroll position in 85-entry list. Default physics felt fast/uncontrolled. `cacheExtent: 500` pre-builds off-screen items to prevent jank on fast fling. |
+| 2026-05-28 | **History rows: copy button added** | History panel showed old passwords with reveal-only toggle. No way to copy old password to clipboard. Copy button added alongside reveal toggle, decrypts on demand, triggers standard 5-min clipboard clear. |
+
+---
+
 ## Things Explicitly Rejected
 
 | Date | Rejected | Why |

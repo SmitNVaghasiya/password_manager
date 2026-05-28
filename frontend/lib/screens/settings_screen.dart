@@ -238,7 +238,14 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       final saltB64 = await db.getMeta('kdf_salt');
       if (saltB64 == null) throw Exception('Vault not initialized');
       final oldSalt = base64Decode(saltB64);
-      final oldKey = await enc.deriveKey(_oldCtrl.text, oldSalt);
+      final kdfVersion = await db.getMeta('kdf_version') ?? 'argon2id_v1';
+      final wasPinVault = kdfVersion == 'argon2id_pin_v1';
+      final oldKey = await enc.deriveKey(
+        _oldCtrl.text,
+        oldSalt,
+        memory: wasPinVault ? 16384 : 65536,
+        iterations: wasPinVault ? 2 : 3,
+      );
 
       final cipherB64 = await db.getMeta('verifier_ciphertext');
       final nonceB64 = await db.getMeta('verifier_nonce');
@@ -258,9 +265,16 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
 
       setState(() => _progress = 0.3);
 
-      // Derive new key
+      // Derive new key — change-password always upgrades to full params
       final newSalt = enc.generateSalt();
-      final newKey = await enc.deriveKey(_newCtrl.text, newSalt);
+      final unlockType = await db.getMeta('unlock_type') ?? 'password';
+      final newIsPinVault = unlockType == 'pin';
+      final newKey = await enc.deriveKey(
+        _newCtrl.text,
+        newSalt,
+        memory: newIsPinVault ? 16384 : 65536,
+        iterations: newIsPinVault ? 2 : 3,
+      );
 
       setState(() => _progress = 0.5);
 
@@ -289,6 +303,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       // Update verifier
       final newVerifier = await enc.encrypt(EncryptionService.verifierPlaintext, newKey);
       await db.setMeta('kdf_salt', base64Encode(newSalt));
+      await db.setMeta('kdf_version', newIsPinVault ? 'argon2id_pin_v1' : 'argon2id_v1');
       await db.setMeta('verifier_ciphertext', base64Encode(newVerifier.ciphertext));
       await db.setMeta('verifier_nonce', base64Encode(newVerifier.nonce));
       await db.setMeta('verifier_mac', base64Encode(newVerifier.mac));

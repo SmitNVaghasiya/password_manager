@@ -107,12 +107,12 @@ class _SetupScreenState extends State<SetupScreen>
     try {
       final db = DatabaseService.instance;
       final salt = _encryption.generateSalt();
-      final key = await _encryption.deriveKey(_pin, salt);
+      final key = await _encryption.deriveKey(_pin, salt, memory: 16384, iterations: 2);
       final verifier =
           await _encryption.encrypt(EncryptionService.verifierPlaintext, key);
 
       await db.setMeta('kdf_salt', base64Encode(salt));
-      await db.setMeta('kdf_version', 'argon2id_v1');
+      await db.setMeta('kdf_version', 'argon2id_pin_v1');
       await db.setMeta('unlock_type', 'pin');
       await db.setMeta('pin_length', _pinLength.toString());
       await db.setMeta('verifier_ciphertext', base64Encode(verifier.ciphertext));

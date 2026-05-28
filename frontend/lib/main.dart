@@ -82,9 +82,8 @@ class _LifecycleObserverState extends State<_LifecycleObserver>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      if (VaultSession.instance.isUnlocked) {
+    if (state == AppLifecycleState.paused) {
+      if (VaultSession.instance.isUnlocked && !VaultSession.suppressLock) {
         VaultSession.instance.lock();
       }
     }

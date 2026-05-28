@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
+import 'package:flutter/foundation.dart';
 
 class EncryptionResult {
   final Uint8List ciphertext;
@@ -38,11 +39,14 @@ class EncryptionService {
     return Uint8List.fromList(List.generate(_nonceLength, (_) => rng.nextInt(256)));
   }
 
-  Future<SecretKey> deriveKey(String password, Uint8List salt) async {
-    return await _argon2.deriveKey(
-      secretKey: SecretKey(utf8.encode(password)),
-      nonce: salt,
-    );
+  Future<SecretKey> deriveKey(
+    String password,
+    Uint8List salt, {
+    int memory = 65536,
+    int iterations = 3,
+  }) async {
+    final bytes = await compute(_argon2Isolate, _Argon2Params(password, salt, memory, iterations));
+    return SecretKey(bytes);
   }
 
   Future<EncryptionResult> encrypt(String plaintext, SecretKey key) async {
@@ -134,4 +138,26 @@ class EncryptionService {
     result.shuffle(rng);
     return result.join();
   }
+}
+
+class _Argon2Params {
+  final String password;
+  final Uint8List salt;
+  final int memory;
+  final int iterations;
+  const _Argon2Params(this.password, this.salt, this.memory, this.iterations);
+}
+
+Future<List<int>> _argon2Isolate(_Argon2Params p) async {
+  final argon2 = Argon2id(
+    parallelism: 1,
+    memory: p.memory,
+    iterations: p.iterations,
+    hashLength: 32,
+  );
+  final key = await argon2.deriveKey(
+    secretKey: SecretKey(utf8.encode(p.password)),
+    nonce: p.salt,
+  );
+  return await key.extractBytes();
 }

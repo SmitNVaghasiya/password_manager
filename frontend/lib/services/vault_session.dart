@@ -8,6 +8,10 @@ import 'database_service.dart';
 class VaultSession extends ChangeNotifier {
   static final VaultSession instance = VaultSession._();
 
+  /// Set true before opening system pickers/overlays that trigger paused state.
+  /// Reset to false after the picker returns.
+  static bool suppressLock = false;
+
   VaultSession._();
 
   SecretKey? _key;
@@ -36,7 +40,14 @@ class VaultSession extends ChangeNotifier {
     }
 
     final salt = base64Decode(saltB64);
-    final derivedKey = await _encryption.deriveKey(password, salt);
+    final kdfVersion = await db.getMeta('kdf_version') ?? 'argon2id_v1';
+    final isPinVault = kdfVersion == 'argon2id_pin_v1';
+    final derivedKey = await _encryption.deriveKey(
+      password,
+      salt,
+      memory: isPinVault ? 16384 : 65536,
+      iterations: isPinVault ? 2 : 3,
+    );
 
     final result = EncryptionResult(
       ciphertext: base64Decode(cipherB64),

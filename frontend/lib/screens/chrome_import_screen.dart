@@ -64,10 +64,12 @@ class _ChromeImportScreenState extends State<ChromeImportScreen> {
       _parseError = null;
     });
 
+    VaultSession.suppressLock = true;
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['csv'],
     );
+    VaultSession.suppressLock = false;
 
     if (result == null || result.files.single.path == null) {
       setState(() => _loading = false);

@@ -299,6 +299,14 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                                 setState(() => _historyVisible[i] = !visible);
                               },
                             ),
+                            IconButton(
+                              icon: const Icon(Icons.copy_outlined, size: 18, color: AppColors.inkMute),
+                              onPressed: () async {
+                                await _decryptHistoryEntry(i);
+                                final pw = _decryptedHistory[i];
+                                if (pw != null) _copyToClipboard(pw, 'Old password');
+                              },
+                            ),
                           ],
                         ),
                       ),

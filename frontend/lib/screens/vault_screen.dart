@@ -152,8 +152,13 @@ class _VaultScreenState extends State<VaultScreen> {
   }
 
   Widget _buildList() {
-    return ListView.separated(
+    return Scrollbar(
+      thumbVisibility: true,
+      child: ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      cacheExtent: 500,
       itemCount: _entries.length,
       separatorBuilder: (context, index) => const SizedBox(height: 8),
       itemBuilder: (context, i) {
@@ -163,6 +168,7 @@ class _VaultScreenState extends State<VaultScreen> {
           initial: _initial(entry.siteName),
           avatarColor: _avatarColor(entry.siteName),
           onTap: () {
+            FocusScope.of(context).unfocus();
             VaultSession.instance.resetAutoLockTimer();
             Navigator.of(context)
                 .pushNamed('/detail', arguments: entry.id)
@@ -170,6 +176,7 @@ class _VaultScreenState extends State<VaultScreen> {
           },
         );
       },
+    ),
     );
   }
 }

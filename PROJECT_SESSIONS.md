@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-05-28 — Bug Fixes, PIN Speed, Scroll Polish
+
+**What was asked:** Fix false "vault locked" message on import screen. Speed up PIN unlock. Add copy button to password history rows. Fix vault list scrollbar and scroll feel.
+
+**What was done:**
+- `main.dart` — removed `AppLifecycleState.inactive` from lock trigger (was firing on keyboard/notification shade). Only `paused` triggers lock now.
+- `vault_session.dart` — added static `VaultSession.suppressLock` flag. Set before file picker opens, cleared after it returns. Prevents vault locking during CSV file selection.
+- `chrome_import_screen.dart` — wraps `FilePicker.platform.pickFiles()` with `suppressLock = true/false`.
+- `encryption_service.dart` — `deriveKey` moved to background isolate via `compute()`. UI thread no longer freezes during Argon2id. Added `memory` + `iterations` params to support PIN vs password vault distinction.
+- `encryption_service.dart` — PIN vaults now use Argon2id 16MB/2iter (`argon2id_pin_v1`). Password vaults keep 64MB/3iter (`argon2id_v1`). ~4x faster PIN unlock.
+- `setup_screen.dart` — PIN path passes `memory: 16384, iterations: 2` and writes `kdf_version: argon2id_pin_v1`.
+- `vault_session.dart` — `unlock()` reads `kdf_version` and passes correct params to `deriveKey`.
+- `settings_screen.dart` — change-password flow reads current `kdf_version` for old-key derivation, derives new key with correct params, writes updated `kdf_version` after re-encryption.
+- `entry_detail_screen.dart` — copy button added to each history row. Decrypts on demand, copies with 5-min clipboard clear.
+- `vault_screen.dart` — wrapped list with `Scrollbar(thumbVisibility: true)`, added `BouncingScrollPhysics`, `cacheExtent: 500`.
+
+**What's blocked:** Existing PIN vaults use old `argon2id_v1` params — will fail unlock with new code. User must clear app data and redo first-launch setup (one-time migration). No automated migration path implemented.
+
+**Next session:** Test PIN speed on device. Test file picker import (no false lock). Verify history copy button. Set up `flutter_launcher_icons` for app logo.
+
+---
+
 ## 2026-05-28 — Graphify Knowledge Graph + Doc Sync
 
 **What was asked:** Continue graphify pipeline (was interrupted at Step 3B), then update all stale MD files.

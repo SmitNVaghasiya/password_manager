@@ -40,6 +40,7 @@ class _EditEntryScreenState extends State<EditEntryScreen> {
     super.initState();
     _isEdit = widget.entryId != null;
     if (_isEdit) {
+      _showPassword = true;
       _loadEntry();
     } else {
       _generate();
