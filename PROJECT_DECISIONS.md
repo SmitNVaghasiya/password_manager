@@ -13,7 +13,7 @@
 | 2026-05-19 | **`setState` / `ChangeNotifier` for state — no Riverpod/Bloc** | App is small (7 screens, 1 user session). Provider-level state is sufficient. Over-engineering state for 2 users is waste |
 | 2026-05-19 | **`sqflite` over Drift** | Drift adds code-gen complexity. sqflite is sufficient for 3 tables and 2 users |
 | 2026-05-19 | **`cryptography` package for AES-GCM-256** | Authenticated encryption — ciphertext tampering is detectable. GCM MAC prevents silent corruption |
-| 2026-05-19 | **PBKDF2-HMAC-SHA256 at 150,000 iterations** | Slow on purpose. Brute-force defense for local encrypted file. 150k is current OWASP recommendation |
+| 2026-05-19 | **[SUPERSEDED 2026-05-20] PBKDF2-HMAC-SHA256 at 150,000 iterations** | Replaced by Argon2id — see Unlock & KDF Decisions section |
 | 2026-05-19 | **VaultSession holds in-memory key — never persisted** | Key in memory only. Drop on lock. Biometric path uses flutter_secure_storage (Android Keystore-backed) — not plain storage |
 | 2026-05-19 | **`flutter_secure_storage` for biometric key path** | Wraps Android Keystore. Key never touches SQLite or SharedPreferences |
 | 2026-05-19 | **`secure_application` for FLAG_SECURE** | Android recent-apps preview leaks password screen. One flag fixes it. Required, not optional |
@@ -80,7 +80,7 @@
 
 | Date | Decision | Reason |
 |---|---|---|
-| 2026-05-19 | **[SUPERSEDES PBKDF2] KDF changed to Argon2 + bcrypt layered** | 4-digit PIN as KDF input with PBKDF2 is brute-forceable in seconds on GPU (only 10k combos). Argon2 is memory-hard — forces attacker to use lots of RAM per attempt, not just raw speed. bcrypt adds configurable work factor on top. Together they make 4-digit PIN meaningfully harder to crack even with exported DB. |
+| 2026-05-19 | **[SUPERSEDES PBKDF2] KDF changed to Argon2id** | 4-digit PIN with PBKDF2 is brute-forceable in seconds on GPU (only 10k combos). Argon2id is memory-hard — forces attacker to use lots of RAM per attempt. Params: parallelism=1, memory=64MB, iterations=3, hashLen=32. Implemented via `Argon2id` class already in the `cryptography` package — zero new dependencies. Note: original plan said "Argon2+bcrypt layered" but `argon2_flutter` does not exist on pub.dev; Argon2id alone from `cryptography` provides sufficient security for this threat model. |
 | 2026-05-19 | **PIN unlock (4-digit) chosen as primary unlock method** | Simpler for dad — no keyboard popup, big tap targets, faster daily unlock. Android-style numpad UI (like Samsung lock screen). |
 | 2026-05-19 | **Auto-submit PIN when digit count matches — no OK button** | UX mirrors Samsung phone behavior. User sets PIN length at setup (4, 5, 6, etc.). App submits automatically when correct number of digits entered. |
 | 2026-05-19 | **PIN OR password — user chooses at first launch setup** | Some users prefer long passphrase over short PIN. Setup screen asks "Choose unlock: PIN or Password". Stored in `app_meta` as `unlock_type`. Cannot change without re-encrypting vault. |
@@ -88,6 +88,18 @@
 | 2026-05-19 | **PIN length user-configurable at setup (min 4 digits)** | 4 = minimum per owner decision. User may choose longer for stronger security. Length stored in `app_meta` as `pin_length`. Auto-submit fires at that length. |
 | 2026-05-19 | **Email-based master password reset — deferred to v2** | Requires internet, server, or email flow. Conflicts with local-only design. Will be added as separate feature after PIN/KDF migration ships. Export backup before reset is the safety net for v1. |
 | 2026-05-19 | **Splash screen added as Screen 1** | Boot → check `kdf_salt` in `app_meta` → if missing route to Setup, if present route to Lock. Logo + "PassMgr" + animated dots. Required routing gate. Was listed as item 10 in PROJECT.md "things forgotten" list. |
+
+---
+
+## Bug Fix Decisions (2026-05-20, Session 4)
+
+| Date | Decision | Reason |
+|---|---|---|
+| 2026-05-20 | **Clipboard auto-clear: 20s → 5 minutes** | 20s was too short for user to context-switch and paste. Snackbar now notes keyboard clipboard history limitation (system clipboard history may persist longer than app can clear it). |
+| 2026-05-20 | **History panel: clear decrypted cache on reload** | `_decryptedHistory` and `_historyVisible` maps were not cleared in `_load()` reset block. Stale cached values persisted across edits, showing wrong password at wrong history index. Fix: `_decryptedHistory.clear(); _historyVisible.clear();` inside setState. |
+| 2026-05-20 | **Entry detail timestamp: show HH:mm in addition to date** | `created_at`/`updated_at` stored as millisecond timestamps but `_formatDate` only formatted date, not time. Time was always available but never displayed. |
+| 2026-05-20 | **Chrome import: call `resetAutoLockTimer()` before import flow** | Browsing 85 CSV entries takes >5 minutes. Auto-lock was firing mid-import, wiping all selected state. Fix: reset timer on CSV parse and on `_importSelected()` entry. Also added dialog explaining vault-locked state instead of silent route wipe. |
+| 2026-05-20 | **Chrome import: duplicate detection on import** | Importing same Chrome export twice created duplicate entries silently. Fix: load all vault entries after CSV parse, build `site_name|username` key set (case-insensitive), mark matches as duplicate — amber card, "Already exists" badge, pre-unchecked. User can force-import duplicates by re-checking. |
 
 ---
 

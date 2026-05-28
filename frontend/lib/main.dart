@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:secure_application/secure_application.dart';
 import 'theme/app_theme.dart';
-import 'services/database_service.dart';
 import 'services/vault_session.dart';
+import 'screens/splash_screen.dart';
 import 'screens/setup_screen.dart';
 import 'screens/lock_screen.dart';
 import 'screens/vault_screen.dart';
@@ -28,13 +28,14 @@ class PassMgrApp extends StatelessWidget {
         title: 'PassMgr',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
-        home: const AppGate(),
+        home: const SplashScreen(),
         routes: {
-          '/setup': (_) => const SetupScreen(),
-          '/lock': (_) => const LockScreen(),
-          '/vault': (_) => const VaultScreen(),
+          '/splash':   (_) => const SplashScreen(),
+          '/setup':    (_) => const SetupScreen(),
+          '/lock':     (_) => const LockScreen(),
+          '/vault':    (_) => const VaultScreen(),
           '/settings': (_) => const SettingsScreen(),
-          '/import': (_) => const ChromeImportScreen(),
+          '/import':   (_) => const ChromeImportScreen(),
         },
         onGenerateRoute: (settings) {
           if (settings.name == '/detail') {
@@ -51,24 +52,26 @@ class PassMgrApp extends StatelessWidget {
           }
           return null;
         },
+        builder: (context, child) => _LifecycleObserver(child: child!),
       ),
     );
   }
 }
 
-class AppGate extends StatefulWidget {
-  const AppGate({super.key});
+class _LifecycleObserver extends StatefulWidget {
+  final Widget child;
+  const _LifecycleObserver({required this.child});
 
   @override
-  State<AppGate> createState() => _AppGateState();
+  State<_LifecycleObserver> createState() => _LifecycleObserverState();
 }
 
-class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
+class _LifecycleObserverState extends State<_LifecycleObserver>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _route();
   }
 
   @override
@@ -79,30 +82,14 @@ class _AppGateState extends State<AppGate> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       if (VaultSession.instance.isUnlocked) {
         VaultSession.instance.lock();
       }
     }
   }
 
-  Future<void> _route() async {
-    final initialized = await DatabaseService.instance.isVaultInitialized();
-    if (!mounted) return;
-    if (initialized) {
-      Navigator.of(context).pushReplacementNamed('/lock');
-    } else {
-      Navigator.of(context).pushReplacementNamed('/setup');
-    }
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: AppColors.paper,
-      body: Center(
-        child: CircularProgressIndicator(color: AppColors.emerald),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => widget.child;
 }

@@ -1,15 +1,30 @@
-- First thing i have to make the app so that it will allow to enter only the pin or the fingureprint also.
-    -- And give option so that rather than only giving the option for the strong password we can choose either of them ok.
-- Second thing i have to add the starting loading screens and also the App Logo also.
-- Add option so that if forgoten the master password i am able to reset it using the email address.
+# Remaining Tasks
 
+## Done (2026-05-20)
+- [x] PIN unlock (Samsung-style numpad, auto-submit, shake on wrong PIN)
+- [x] Fingerprint / biometric unlock on lock screen
+- [x] Splash screen with logo placeholder + routing gate
+- [x] Argon2id KDF replacing PBKDF2
+- [x] Setup screen: choose PIN or password unlock method
+- [x] Clipboard auto-clear: bumped 20s → 5 minutes
+- [x] History panel stale cache bug fixed
+- [x] Entry detail timestamp now shows HH:mm
+- [x] Chrome import: resetAutoLockTimer fix + vault-locked dialog
+- [x] Chrome import: duplicate detection (amber badge, pre-unchecked)
 
- <!-- Random "screen" like bcrypt to slow cracking — yes, this is exactly what a good KDF does. What you're describing:
-  - bcrypt — slow hash, has "cost factor" (work factor), gets slower as you raise it
-  - Argon2 — even better, modern standard, uses memory + time to slow GPUs
-  - scrypt — similar, memory-hard -->
+## Deferred to v2
+- [ ] Email-based master password reset (requires server — conflicts with local-only design)
 
+## Open Bugs (20-05-2026)
+- [ ] "Vault is locked" message shown even though vault was never actually locked — investigate auto-lock false-positive
+- [ ] History view: copy button missing (only reveal toggle exists — was in original mockup)
 
-
--- Make the eye button in the import page make it bigger ok.  And rethink that page and recreate it. 
--- What happenes when i click the import button if the csv file passowrds i have already imported and i will import once again ??
+## Backlog Features
+- [ ] Categories (low priority — can scroll 50 entries without them)
+- [ ] Password generator: support up to 256 character passwords (currently likely capped lower)
+- [ ] Import page: eye button too small — make bigger
+- [ ] Import page: rethink/redesign the import UI
+- [ ] Import page: what happens when importing CSV that was already imported? (duplicate detection is in, but re-test edge cases)
+- [ ] "Change PIN" option in Settings screen (currently only "Change master password" which handles password mode — need PIN mode equivalent)
+- [ ] App logo: swap Flutter-drawn lock icon placeholder with actual PNG/JPEG (owner will provide file)
+- [ ] Test biometric on dad's physical phone (emulator unreliable for biometric)

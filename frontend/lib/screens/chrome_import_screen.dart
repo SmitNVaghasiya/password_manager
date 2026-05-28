@@ -122,6 +122,7 @@ class _ChromeImportScreenState extends State<ChromeImportScreen> {
         if (!entries[i].isDuplicate) selected.add(i);
       }
 
+      VaultSession.instance.resetAutoLockTimer();
       setState(() {
         _entries = entries;
         _selected = selected;
@@ -183,9 +184,26 @@ class _ChromeImportScreenState extends State<ChromeImportScreen> {
   Future<void> _importSelected() async {
     if (_selected.isEmpty) return;
 
+    VaultSession.instance.resetAutoLockTimer();
+
     if (!VaultSession.instance.isUnlocked) {
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/lock', (r) => false);
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Vault locked'),
+            content: const Text('The vault locked due to inactivity. Unlock again to continue the import.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).pushNamedAndRemoveUntil('/lock', (r) => false);
+                },
+                child: const Text('Go to unlock'),
+              ),
+            ],
+          ),
+        );
       }
       return;
     }

@@ -85,7 +85,7 @@ If `PROJECT.md` and any other doc conflict, `PROJECT.md` wins for scope and `DES
 | Database | `sqflite` | Simpler than drift, enough for this scope |
 | Secure key storage | `flutter_secure_storage` | Wraps Android Keystore |
 | Encryption | `cryptography` (AES-GCM-256) | Authenticated encryption, prevents tampering |
-| KDF | **Argon2 + bcrypt (layered)** — replaces PBKDF2 | Memory-hard KDF. Required for short PIN (4-digit) to resist GPU brute-force on portable DB export. |
+| KDF | **Argon2id** — replaces PBKDF2 | Memory-hard KDF (parallelism=1, memory=64MB, iterations=3, hashLen=32). Required for short PIN (4-digit) to resist GPU brute-force on portable DB export. From `cryptography` package — no extra dependency. |
 | Biometrics | `local_auth` | Standard Flutter package |
 | File picking | `file_picker` | Standard |
 | CSV parsing | `csv` | Standard |
@@ -137,7 +137,7 @@ CREATE TABLE app_meta (
 ## Encryption Rules (read before touching any crypto code)
 
 - Algorithm: AES-GCM-256
-- KDF: **Argon2 + bcrypt (layered)** — memory-hard, replaces PBKDF2. Required for 4-digit PIN viability on portable DB.
+- KDF: **Argon2id** (parallelism=1, memory=64MB, iterations=3) — memory-hard, replaces PBKDF2. Required for 4-digit PIN viability on portable DB. Class `Argon2id` from `cryptography` package.
 - Salt: 32-byte random, stored in `app_meta` as `kdf_salt`
 - Nonce: 12 bytes, fresh random per encryption. Never reuse.
 - Verifier: encrypt known string `"VAULT_OK_v1"` at setup to verify PIN/password without storing it

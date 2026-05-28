@@ -176,7 +176,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _SettingsCard(children: [
             const ListTile(
               title: Text('PassMgr', style: TextStyle(fontSize: 15, color: AppColors.ink)),
-              trailing: Text('v1.1.0', style: TextStyle(fontSize: 13, color: AppColors.inkMute)),
+              trailing: Text('v1.2.0', style: TextStyle(fontSize: 13, color: AppColors.inkMute)),
             ),
             const Divider(height: 1),
             const ListTile(

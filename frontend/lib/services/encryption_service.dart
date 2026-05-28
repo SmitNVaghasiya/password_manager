@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
@@ -15,17 +16,16 @@ class EncryptionResult {
 }
 
 class EncryptionService {
-  static const _pbkdf2Iterations = 150000;
   static const _saltLength = 32;
   static const _nonceLength = 12;
-  static const _keyLength = 32;
   static const String verifierPlaintext = 'VAULT_OK_v1';
 
   final _aesGcm = AesGcm.with256bits(nonceLength: _nonceLength);
-  final _pbkdf2 = Pbkdf2(
-    macAlgorithm: Hmac.sha256(),
-    iterations: _pbkdf2Iterations,
-    bits: _keyLength * 8,
+  final _argon2 = Argon2id(
+    parallelism: 1,
+    memory: 65536, // 64 MB
+    iterations: 3,
+    hashLength: 32,
   );
 
   Uint8List generateSalt() {
@@ -39,17 +39,16 @@ class EncryptionService {
   }
 
   Future<SecretKey> deriveKey(String password, Uint8List salt) async {
-    final secretKey = await _pbkdf2.deriveKey(
-      secretKey: SecretKey(password.codeUnits),
+    return await _argon2.deriveKey(
+      secretKey: SecretKey(utf8.encode(password)),
       nonce: salt,
     );
-    return secretKey;
   }
 
   Future<EncryptionResult> encrypt(String plaintext, SecretKey key) async {
     final nonce = generateNonce();
     final secretBox = await _aesGcm.encrypt(
-      plaintext.codeUnits,
+      utf8.encode(plaintext),
       secretKey: key,
       nonce: nonce,
     );
@@ -82,7 +81,7 @@ class EncryptionService {
         mac: Mac(result.mac),
       );
       final plainBytes = await _aesGcm.decrypt(secretBox, secretKey: key);
-      return String.fromCharCodes(plainBytes);
+      return utf8.decode(plainBytes);
     } catch (_) {
       return null;
     }
@@ -127,13 +126,11 @@ class EncryptionService {
     final rng = Random.secure();
     final result = List<String>.generate(length, (_) => charset[rng.nextInt(charset.length)]);
 
-    // Ensure at least one char from each required set
     for (var i = 0; i < required.length && i < length; i++) {
       final set = required[i];
       result[i] = set[rng.nextInt(set.length)];
     }
 
-    // Shuffle to avoid predictable positions
     result.shuffle(rng);
     return result.join();
   }

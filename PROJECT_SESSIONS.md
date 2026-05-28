@@ -4,6 +4,64 @@
 
 ---
 
+## 2026-05-28 — Graphify Knowledge Graph + Doc Sync
+
+**What was asked:** Continue graphify pipeline (was interrupted at Step 3B), then update all stale MD files.
+
+**What was done:**
+- `graphify-out/graph.html` — interactive visualization generated (389 nodes, 369 edges, 37 communities)
+- `graphify-out/graph.json` — full graph with community detection + god nodes
+- `graphify-out/graph_graphrag.json` — GraphRAG-ready export
+- `graphify-out/GRAPH_REPORT.md` — plain-language report, Obsidian-compatible
+- God nodes: `chrome_import_screen.dart`, `setup_screen.dart`, `settings_screen.dart`, `entry_detail_screen.dart`, `main.dart`
+- `CLAUDE.md` — fixed KDF description: "Argon2 + bcrypt (layered)" → "Argon2id" (matches actual code — no bcrypt in implementation)
+- `PROJECT_DECISIONS.md` — marked original PBKDF2 row [SUPERSEDED], corrected KDF decision to Argon2id with accurate params, added 2026-05-20 bug-fix decisions (clipboard timer, history cache, timestamp, import auto-lock, duplicate detection)
+- `Remaining_tasks.md` — full rewrite: marked completed tasks done, organized open bugs vs backlog features
+
+**What's blocked:** Nothing.
+
+**Next session:** Run `flutter pub get` + `flutter analyze` to verify Argon2id API compiles. Test PIN flow on device. Test biometric on dad's phone.
+
+---
+
+## 2026-05-20 — PIN Unlock, Splash Screen, Argon2 KDF
+
+**What was asked:** Add splash screen with logo. Replace PBKDF2 with Argon2id. Rewrite setup to offer PIN or password unlock. Rewrite lock screen with Samsung-style PIN numpad.
+
+**What was done:**
+- `pubspec.yaml` — added `argon2_flutter: ^2.0.0`, version bumped 1.1.1+4 → 1.2.0+5
+- `lib/services/encryption_service.dart` — KDF swapped PBKDF2 (150k iter) → Argon2id (memory=64MB, iter=3, keyLen=32). UTF-8 encoding consistent across encrypt/decrypt.
+- `lib/screens/splash_screen.dart` — NEW. Logo (lock icon + "PassMgr" wordmark) + animated 3-dot loader. Checks `kdf_salt` → routes to /setup or /lock after 700ms minimum.
+- `lib/widgets/pin_numpad.dart` — NEW. Shared Samsung-style numpad (3×3 digits + backspace|0|rightAction slot).
+- `lib/screens/setup_screen.dart` — Rewritten. Multi-step flow: choose PIN/password → PIN (length chips 4/5/6/8 + enter + confirm with shake on mismatch + hint) or password (text fields). Writes `unlock_type`, `pin_length`, `kdf_version=argon2id_v1` to app_meta.
+- `lib/screens/lock_screen.dart` — Rewritten. PIN mode: logo + dots + numpad, auto-submits on last digit, shake+clear on wrong PIN, fingerprint in bottom-right slot. Password mode: existing text field design kept.
+- `lib/main.dart` — SplashScreen as home, AppGate removed, LifecycleObserver moved to `builder` wrapper (cleaner pattern).
+- `lib/screens/settings_screen.dart` — version string updated to v1.2.0.
+
+**What's blocked:** Needs `flutter pub get` + `flutter analyze` to verify argon2_flutter API compiles. Logo PNG to be swapped in later.
+
+**Next session:** Test on device. Add "Change PIN" to Settings screen. Verify biometric on dad's physical phone.
+
+---
+
+## 2026-05-20 — Four Bug Fixes (history, clipboard, timestamp, CSV import)
+
+**What was asked:** Fix 4 bugs: (1) history panel shows stale/wrong password after edit, (2) clipboard not clearing + 20s too short, (3) time not shown on detail screen, (4) CSV import redirects to lock screen with no import.
+
+**What was done:**
+- `entry_detail_screen.dart` — Bug 1: Added `_decryptedHistory.clear(); _historyVisible.clear();` inside `_load()` setState block. Stale cached decrypted history values were persisting after reload, causing wrong passwords to show at wrong indices.
+- `entry_detail_screen.dart` — Bug 2: Changed clipboard clear timer from `Duration(seconds: 20)` → `Duration(minutes: 5)`. Updated snackbar to note keyboard clipboard history limitation.
+- `entry_detail_screen.dart` — Bug 3: `_formatDate` now appends `HH:mm` to the date string. Time was stored (millisecond timestamp) but never displayed.
+- `chrome_import_screen.dart` — Bug 4: (a) `resetAutoLockTimer()` called after successful CSV parse so browsing entries doesn't trigger auto-lock. (b) `resetAutoLockTimer()` called at start of `_importSelected()`. (c) If vault IS locked when Import is tapped, show explanation dialog instead of silently wiping all routes and losing user selections.
+- `pubspec.yaml` — version bumped `1.1.0+3` → `1.1.1+4` (patch fixes)
+- `settings_screen.dart` — version display updated `v1.1.0` → `v1.1.1`
+
+**What's blocked:** Nothing.
+
+**Next session:** Test all 4 fixes on device. Then continue KDF/PIN/splash work from prior session plan.
+
+---
+
 ## 2026-05-19 — Duplicate Detection on Chrome Import
 
 **What was asked:** Detect duplicates when importing Chrome CSV — show "Already exists" badge, pre-uncheck duplicates, let user force-import if needed.

@@ -78,6 +78,8 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         _password = password;
         _notes = notes;
         _history = history;
+        _decryptedHistory.clear();
+        _historyVisible.clear();
         _loading = false;
       });
     }
@@ -88,10 +90,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     VaultSession.instance.resetAutoLockTimer();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label copied — clears in 20s')),
+      SnackBar(content: Text('$label copied — clears in 5 min (keyboard history may still show it)')),
     );
     _clipboardTimer?.cancel();
-    _clipboardTimer = Timer(const Duration(seconds: 20), () {
+    _clipboardTimer = Timer(const Duration(minutes: 5), () {
       Clipboard.setData(const ClipboardData(text: ''));
     });
   }
@@ -313,7 +315,9 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   }
 
   String _formatDate(DateTime dt) {
-    return '${dt.day} ${_month(dt.month)} ${dt.year}';
+    final h = dt.hour.toString().padLeft(2, '0');
+    final min = dt.minute.toString().padLeft(2, '0');
+    return '${dt.day} ${_month(dt.month)} ${dt.year}, $h:$min';
   }
 
   String _month(int m) {
